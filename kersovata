@@ -1,0 +1,243 @@
+/* Данная программа имеет следующий набор команд:
+ * 1)save - Сохранение многочлена в память
+ * 2)alg  - Выполнение математических операций(*,+,-)
+ * 3)pow  - Возведение многочлена в степень
+ * 4)repl - Замена переменнох в многочлене на него самого
+ * 5)show - Вывод многочлена на экран
+ * 6)stop - Остановка программы
+ *
+ * Ввод данных осуществляется следующим образом:
+ * 1)Вводится команда в консоль
+ * 2)Вводятся данные по требованию программы*/
+
+#include <iostream>
+#include <map>
+#include <utility>
+#include <vector>
+
+using namespace std;
+/*
+Словарь, в котором ключем выступает название многочлена,
+ а значением - массив коэффицентов для x^i многочлена.
+ */
+map<string, vector<int>> dataStore;
+
+//Проверка нахождения данного названия многочлена в памяти.
+bool isInDataStore(const string &s) {
+    return dataStore.find(s) != dataStore.end();
+}
+
+/*Перемножение двух многочленов.
+ * Также может принять на входе коэффицент k,
+ * который нужен, если мы будем заменять переменные многочлена на многочлен.
+ */
+vector<int> multiply(vector<int> v1, vector<int> v2, int k = 1) {
+    vector<int> m(v1.size() + v2.size() - 1);
+    for (int i = 0; i < v1.size(); i++) {
+        for (int j = 0; j < v2.size(); j++) {
+            m[i + j] += v1[i] * v2[j] * k;
+        }
+    }
+    return m;
+}
+
+//Возведение многочлена в степень. Реализовано ч/з итеративное умножение.
+vector<int> polyPow(const vector<int> &cur, int power, int k = 1) {
+    vector<int> m;
+    for (int i: cur) {
+        m.push_back(i * k);
+    }
+    for (int i = 0; i < power - 1; i++) {
+        m = multiply(m, cur, k);
+    }
+    return m;
+}
+
+//Сложение/вычитание двух многочленов(режим работы зависит от лог. переменной su)
+vector<int> polySum(vector<int> v1, vector<int> v2, bool su = true) {
+    bool isFirstVectLonger = v1.size() > v2.size();
+    int maximalVectLen = max(v1.size(), v2.size());
+    int minimalVectLen = min(v1.size(), v2.size());
+    vector<int> m(maximalVectLen);
+    if (su) {
+        for (int i = 0; i < maximalVectLen; i++) {
+            if (i < minimalVectLen) {
+                m[i] = v1[i] + v2[i];
+            } else {
+                m[i] = isFirstVectLonger ? v1[i] : v2[i];
+            }
+        }
+    } else {
+        for (int i = 0; i < maximalVectLen; i++) {
+            if (i < minimalVectLen) {
+                m[i] = v1[i] - v2[i];
+            } else {
+                m[i] = isFirstVectLonger ? v1[i] : -v2[i];
+            }
+        }
+    }
+    return m;
+}
+
+//Запись многочлена в словарь.
+void writePoly(vector<int> m) {
+    string s;
+    cout << "Enter poly's name to save the result:";
+    cin >> s;//Ввод названия многочлена
+    dataStore[s] = std::move(m);
+}
+
+//Комманда успешно выполнена.
+void success() {
+    cout << "Done successfully.\n";
+}
+
+int main() {
+    string doTask;
+    string exp;
+    while (true) {
+        cout << "Enter the command:";
+        cin >> doTask;//Ввод команды
+        if (doTask == "save") {
+            vector<int> m(1);
+            m[0] = 0;
+            string s;
+            cout << "Enter poly itself(without name):";
+            cin >> s;//Ввод многочлена
+            bool isExtent = false;
+            string extent = "0", k;
+            if (s[0] == '-') {
+                k = "-";
+            }
+            for (char i: s) {
+                if (i == '+' || i == '-') {
+                    if (extent == "0" && isExtent) {
+                        extent = "1";
+                    }
+                    if (k.empty() || k == "-" || k == "+") {
+                        k += "1";
+                    }
+                    while (m.size() <= stoi(extent)) {
+                        m.push_back(0);
+                    }
+                    m[stoi(extent)] += stoi(k);
+                    isExtent = false;
+                    extent = "0", k = i == '-' ? "-" : "";
+                } else if (!isdigit(i)) {
+                    isExtent = true;
+                } else if (isdigit(i)) {
+                    isExtent ? extent.push_back(i) : k.push_back(i);
+                }
+            }
+            if (extent == "0" && isExtent) {
+                extent = "1";
+            }
+            if (k.empty() || k == "-" || k == "+") {
+                k += "1";
+            }
+            while (m.size() <= stoi(extent)) {
+                m.push_back(0);
+            }
+            m[stoi(extent)] += stoi(k);
+            writePoly(m);
+            success();
+        } else if (doTask == "alg") {
+            cout << "Enter two poly's names with operator(*,+,-) between them:";
+            cin >> exp;//Ввод выражения с двумя многочленами
+            string p1, p2;
+            if (exp.find('*') != -1) {
+                p1 = exp.substr(0, exp.find('*'));//первый многочлен(название)
+                p2 = exp.substr(exp.find('*') + 1);//второй многочлен(название)
+                if (isInDataStore(p1) && isInDataStore(p2)) {
+                    vector<int> v1, v2;//Многочлены(массивы)
+                    for (int i: dataStore[p1]) {
+                        v1.push_back(i);
+                    }
+                    for (int i: dataStore[p2]) {
+                        v2.push_back(i);
+                    }
+                    writePoly(multiply(v1, v2));
+                    success();
+                }
+
+            } else if (exp.find('-') != -1) {
+                p1 = exp.substr(0, exp.find('-'));//первый многочлен(название)
+                p2 = exp.substr(exp.find('-') + 1);//второй многочлен(название)
+                if (isInDataStore(p1) && isInDataStore(p2)) {
+                    writePoly(polySum(dataStore[p1], dataStore[p2], false));
+                    success();
+                }
+
+            } else if (exp.find('+') != -1) {
+                p1 = exp.substr(0, exp.find('+'));//первый многочлен(название)
+                p2 = exp.substr(exp.find('+') + 1);//второй многочлен(название)
+                if (isInDataStore(p1) && isInDataStore(p2)) {
+                    writePoly(polySum(dataStore[p1], dataStore[p2]));
+                    success();
+                }
+            }
+        } else if (doTask == "pow") {
+            cout << "Enter poly's name to pow:";
+            cin >> exp;//многочлен(название)
+            if (isInDataStore(exp)) {
+                cout << "Enter power(should be positive, so no errors would be occurred):";
+                int power;
+                cin >> power;//степень
+                if (power > 0) {
+                    writePoly(polyPow(dataStore[exp], power));
+                }
+                success();
+            }
+        } else if (doTask == "repl") {
+            cout << "Enter poly's name that var should be replaced:";
+            cin >> exp;//многочлен(название)
+            if (isInDataStore(exp)) {
+                vector<int> m(dataStore[exp].size() * 2 - 1);
+                for (int i = 1; i < dataStore[exp].size(); i++) {
+                    m = polySum(m, polyPow(dataStore[exp], i, dataStore[exp][i]));
+                }
+                writePoly(m);
+                success();
+            }
+        } else if (doTask == "deri") {
+            cout << "Enter poly's name to derive:";
+            cin >> exp;//многочлен(название)
+            if (isInDataStore(exp)) {
+                vector<int> m(dataStore[exp].size() - 1);
+                for (int i = 1; i < dataStore[exp].size(); i++) {
+                    m[i - 1] = dataStore[exp][i] * i;
+                }
+                writePoly(m);
+                success();
+            }
+        } else if (doTask == "show") {
+            cout << "Enter poly's name to show:";
+            cin >> exp;//многочлен(название)
+            if (isInDataStore(exp)) {
+                cout << exp << '=';
+                int k;
+                bool isFirst = true;//Не выводилось ли что-то(чтобы строка не начиналась с +)
+                for (int i = 0; i < dataStore[exp].size(); i++) {
+                    k = dataStore[exp][i];
+                    if (k) {
+                        if (i == 0) {
+                            cout << k;
+                            isFirst = false;
+                        } else if (k < 0 || isFirst) {
+                            cout << k << "*x^" << i;
+                            isFirst = false;
+                        } else {
+                            cout << '+' << k << "*x^" << i;
+                        }
+                    }
+                }
+                cout << endl;
+            }
+        } else if (doTask == "stop") {
+            break;
+        } else {
+            cout << "Invalid expression.\n";//Некорректная комманда
+        }
+    }
+    return 0;
+}
